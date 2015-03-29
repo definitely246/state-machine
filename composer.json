@@ -1,5 +1,5 @@
 {
-    "name": "definitely245/state-machine",
+    "name": "definitely246/state-machine",
     "description": "A finite state machine for php. Just playing around. Pull requests/forks welcome.",
     "keywords": ["finite", "state", "machine", "finite state machine", "state-machine"],
     "license": "MIT",
@@ -22,9 +22,6 @@
         "psr-4": {
             "StateMachine\\": "src/StateMachine"
         }
-    },
-    "config": {
-        "preferred-install": "dist"
     },
     "minimum-stability": "stable"
 }
