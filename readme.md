@@ -17,143 +17,52 @@ composer require definitely246/state-machine
 ## Quickstart Example
 
 ```php
-$transitions = [
-	[ 'event' => 'event1', 'from' => 'state1', 'to' => 'state2', 'start' => true],
-	[ 'event' => 'event2', 'from' => 'state2', 'to' => 'state3' ],
-	[ 'event' => 'event3', 'from' => 'state3', 'to' => 'state1' ],
-	[ 'event' => 'event4', 'from' => 'state1', 'to' => 'state5', 'stop' => true ],
-];
-
-$context = new StdClass;
-$factory = new ObjectFactory($namespace = '', $strictMode = false);
-$fsm = new StateMachine\FSM($transitions, $context, $factory);
-
-print $fsm->state() . PHP_EOL; // 'state1'
-
-$fsm->event1();
-
-print $fsm->state() . PHP_EOL; // 'state2'
-
-// let's try to trigger an invalid event transition
-try {
-	$fsm->event3();	// not allowed, there is no transition defined for this
-} catch (\StateMachine\Exceptions\CannotTransitionForEvent $e) {
-
-}
-
-// if you don't want exceptions, turn whiny mode off,
-$fsm->whiny = false;
-
-$fsm->event3(); // returns false
-
-// not really recommended though, when you can use `canEvent3()`
-if ($fsm->canEvent3()) {
-	$fsm->state() // 'state2'
-}
-
-print $fsm->state() . PHP_EOL; // 'state2'
-
-// let's advance now,
-
-$fsm->event2();
-print $fsm->state() . PHP_EOL; // 'state3'
-
-$fsm->event3();
-print $fsm->state() . PHP_EOL; // 'state1'
-
-$fsm->event4();
-$fsm->isStoppped();	// true
-$fsm->event2(); 	// throws StateMachine\Exceptions\StateMachineIsStopped
-					// because $fsm->whiny is true
-```
-
-Of course, this quick start example doesn't really deal with handlers. It uses the `StateMachine\DefaultHandler` since `$strictMode = false` for our `ObjectFactory`. Let's define an example handler class for this example.
-
-```php
-class Event3ChangesState3ToState4
+class Event1ChangedState1ToState2
 {
-	public function allow($context, $arg1, $arg2)
+	public function allow($context)
 	{
-		// let's the FSM know if this transition
-		// should even be allowed to run, when
-		// false, the FSM will check for the next
-		// Event3 and State3 transition in the
-		// transitions the FSM is constructed with
 		return true;
 	}
-
-	public function handle($context, $arg1, $arg2)
-	{
-		// when this event is being called, you can
-		// actually do stuff... which makes the FSM
-		// a little more interesting
-
-		return "we are handling event3 and state3 -> state4\n";
-	}
-}
-```
-
-Now that we've defined this event transition handler class, we can call our fsm above and see a print message.
-
-```php
-// assuming we are on state3
-$fsm->state(); 						// 'state3'
-print $fsm->event3('arg1', 'arg2');	// prints "we are handling event3 and ..."
-$fsm->state();						// 'state1'
-```
-
-See how the transition handler was executed? This allows us to write handler events for our finite state machine transitions. In fact, if `ObjectFactory` has `strictMode = true` then you must write a handler for **every** event transition, even if they are just blank. I recommend using `$strictMode = true` because it lets you know quickly which transistion event handler classes you need to create and allows you to tap into the finite state machine's context. You can even cancel event transitions in the `handle()` method.
-
-```php
-class Event3ChangesState3ToState4
-{
-	public function allow($context)
-	{
-		return true;	// allows this transition to run
-	}
-
+	
 	public function handle($context)
 	{
-		$response = ['some' => 'stuff here'];
-		throw new StateMachine\Exceptions\ShouldNotTransition($response);
+		if (!$context->statesChanged) $context->statesChanged = 0;
+		print "state1 -> state2\n";
+		return $context->statesChanged++;
 	}
 }
-```
-With the above changes to our event transition handler we will get the following output
 
-```php
-$fsm->state();	// 'state3'
-$fsm->event3();	// ['some' => 'stuff here']
-$fsm->state();	// 'state3' <-- not changed
-```
-
-You can also trigger events off another state. This is complex and probably should be avoided. However, if you find yourself needing to trigger an event inside of another event, then you can use `TriggerTransitionEvent`.
-
-```php
-class Event1ChangesState1ToState2
+class Event1ChangedState2ToState1
 {
 	public function allow($context)
-	{
-		return true;	// allows this transition to run
-	}
-
-	public function handle($context)
-	{
-		throw new StateMachine\Exceptions\TriggerTransitionEvent('event4', ['arg1', 'arg2', 'arg3']);
-	}
+   	{
+   		return true;
+   	}
+   	
+   	public function handle($context)
+   	{
+		print "state2 -> state1\n";
+   		return $context->statesChanged++;
+   	}
 }
+
+$transitions = [
+	[ 'event' => 'event1', 'from' => 'state1', 'to' => 'state2', 'start' => true],
+	[ 'event' => 'event1', 'from' => 'state2', 'to' => 'state1' ],
+];
+
+$fsm = new StateMachine\FSM($transitions);
+
+print $fsm->state() . PHP_EOL; // 'state1'
+
+$fsm->event1();	// returns 1, prints 'state1 -> state2'
+
+print $fsm->state() . PHP_EOL; // 'state2'
+
+$fsm->event1();	// 2, prints 'state2 -> state1'
+
+print $fsm->state() . PHP_EOL; // 'state1'
 ```
-
-Now triggering *event1* inside of state1 actually ends up triggering *event4*
-
-```php
-$fsm->state();	// 'state1'
-$fsm->event1();
-$fsm->state();	// 'state5' <-- the stopped state
-$fsm->isStopped();
-```
-
-That's a long quickstart. I've included a vending machine example below that I use in my [book](http://www.leanpub.com/larasign) for more details on this state machine.
 
 ## Vending Machine Example
 
@@ -257,14 +166,15 @@ class MyModel extends \Eloquent
 But wait, that's not all. There is also 3rd parameter on FSM too. In fact, let's show the method signature for the FSM constructor. You can see below that you can apply your own `ObjectFactory` object to finite state machine. This factory is what creates new transition handler objects. If you'd like to change the way handler classes are named, then you should override this factory.
 
 ```php
-public function __construct(array $transitions, $context = null, $factory = '')
+public function __construct($transitions, $context = null, $factory = '')
 {
 	$this->whiny = true;
 	$this->stopped = false;
 	$this->context = $context ?: new Context;
 	$this->factory = is_string($factory) ? new ObjectFactory($factory, true) : $factory;
-	$this->transitions = $this->optimizeTransitions($transitions);
-	$this->setInitialState($transitions);
+	$this->transitions = is_array($transitions) ? new Transitions($transitions) : $transitions;
+	$this->state = $this->transitions->startingState();
+	$this->addTransitionHandlers();
 }
 ```
 
@@ -273,13 +183,16 @@ If you pass a string to `$factory` it uses that as the namespace for transition 
 ```php
 $context = array();
 $machine = new StateMachine\FSM($transitions, $context, '\MyNamespaceToTransitionHandlerEvents');
-// throws StateMachine\Exceptions\TransitionHandlerNotFound
+// throws StateMachine\Exceptions\TransitionHandlerNotFound for \MyNamespaceToTranstitionHandlerEvents\InsertChangesIdleToHasMoney
 ```
 
 This lets us group our handlers into a single namespace. Now the `StateMachine\Exceptions\TransitionHandlerNotFound` exception should be telling us that it cannot find `\MyNamespaceToTransitionHandlerEvents\InsertChangesIdleToHasMoney`. Neat right? If you need more control, such as turning off `$strictMode` or changing how handler classes are created then you can use your own `ObjectFactory` and provide that factory to your finite state machine constructor.
 
+If you pass `$strictMode = false` to the `ObjectFactory` the anytime transition handler classes are not found, the object factory returns a `StateMachine\DefaultTransitionHandler` instead.
 
-#### Whiny mode
+If `ObjectFactory` has `strictMode = true` then you must write a handler for **every** event transition, even if they are just blank. I recommend using `$strictMode = true` because it lets you know quickly which transistion event handler classes you need to create and allows you to tap into the finite state machine's context. 
+
+### Whiny mode
 
 If you don't want exceptions for invalid transition event requests then turn whiny mode off. Note this makes it harder to troubleshoot though.
 
@@ -288,6 +201,76 @@ $fsm->whiny = false;
 $fsm->state() 		// 'state1'
 $fsm->canPurchase(); 	// returns false
 $fsm->purchase();	// returns false (does not throw CannotTransitionForEvent exception)
+```
+
+### Canceling State Transition
+
+You can cancel event transitions in the `handle()` method using an exception.
+
+```php
+class InsertChangesIdleToHasMoney
+{
+	public function allow($context)
+	{
+		return true;	// allows this transition to run
+	}
+
+	public function handle($context)
+	{
+		$response = ['some' => 'stuff here'];
+		throw new StateMachine\Exceptions\ShouldNotTransition($response);
+	}
+}
+```
+With the above changes to our event transition handler we will get the following output
+
+```php
+$fsm->state();	// 'idle'
+$fsm->event3();	// ['some' => 'stuff here']
+$fsm->state();	// 'idle' <-- not changed to 'has money' state
+```
+
+### Triggering Another State Transition
+
+You can also trigger events off another state. This is complex and probably should be avoided. However, if you find yourself needing to trigger an event inside of another event, then you can use `TriggerTransitionEvent`.
+
+```php
+class InsertChangesHasMoneyToHasMoney
+{
+	public function allow($context, $coins)
+	{
+		return true;	// allows this transition to run
+	}
+
+	public function handle($context, $coins)
+	{
+		// force the vending machine to refund money...
+		// this ends up calling $fsm->trigger('refund', []);
+		if ($coins < 25) {
+			throw new StateMachine\Exceptions\TriggerTransitionEvent('refund', $args = []);
+		}
+	}
+}
+```
+
+Now triggering *insert* inside of *has money* state actually ends up triggering *refund*
+
+```php
+$fsm->state();	// 'has money'
+$fsm->insert(5);
+$fsm->state();	// 'idle' <-- the user was refunded
+```
+
+### Finite State Machine Stopped
+
+You can see if the fsm is stopped at anytime. Once in stopped all events triggered will fail. If whiney mode is true then you will get a `StateMachineIsStopped` exception, otherwise you'll get a false.
+
+```php
+$fsm->state();				// 'has money' state
+$fsm->trigger('purchase', ['Pepsi']);	// user bought a pepsi
+$fsm->state();				// 'out of stock' state
+$fsm->isStopped();			// true
+$fsm->insert(125);			// throws StateMachine\StateMachineIsStopped exception
 ```
 
 ## Licence
