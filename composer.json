@@ -1,0 +1,26 @@
+{
+    "name": "definitely245/state-machine",
+    "description": "A finite state machine for php. Just playing around. Pull requests/forks welcome.",
+    "keywords": ["finite", "state", "machine", "finite state machine", "state-machine"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Kelt",
+            "email": "kelt@dockins.org",
+            "homepage": "http://www.keltdockins.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0"
+    },
+    "require-dev": {
+        "mockery/mockery": "0.9.*",
+        "phpunit/phpunit": "~4.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "StateMachine\\": "src/StateMachine"
+        }
+    }
+}
