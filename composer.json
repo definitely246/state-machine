@@ -22,5 +22,9 @@
         "psr-4": {
             "StateMachine\\": "src/StateMachine"
         }
-    }
+    },
+    "config": {
+        "preferred-install": "dist"
+    },
+    "minimum-stability": "stable"
 }
