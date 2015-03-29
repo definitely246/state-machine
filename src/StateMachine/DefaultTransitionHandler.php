@@ -1,6 +1,6 @@
 <?php namespace StateMachine;
 
-class DefaultTransition
+class DefaultTransitionHandler
 {
 	/**
 	 * The default transition allows all states

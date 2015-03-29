@@ -7,15 +7,17 @@ class ObjectFactoryTest extends \PHPUnit_Framework_TestCase
 	public function test_it_creates_transition_class_name()
 	{
 		m::mock('EventChangesState1ToState2');
+		$transition = new Transition(['event' => 'event', 'from' => 'state1', 'to' => 'state2']);
 		$obj = new ObjectFactory($namespace = '', $strictMode = true);
-		$this->assertEquals('\EventChangesState1ToState2', $obj->createTransitionClassName('state1', 'state2', 'event'));
+		$this->assertEquals('\EventChangesState1ToState2', $obj->createTransitionClassName($transition));
 	}
 
 	public function test_it_creates_transition_class_name_with_namespace()
 	{
 		m::mock('MyNamespace\EventChangesState1ToState2');
+		$transition = new Transition(['event' => 'event', 'from' => 'state1', 'to' => 'state2']);
 		$obj = new ObjectFactory('\MyNamespace', true);
-		$this->assertEquals('\MyNamespace\EventChangesState1ToState2', $obj->createTransitionClassName('state1', 'state2', 'event'));
+		$this->assertEquals('\MyNamespace\EventChangesState1ToState2', $obj->createTransitionClassName($transition));
 	}
 
 	/**
@@ -23,14 +25,16 @@ class ObjectFactoryTest extends \PHPUnit_Framework_TestCase
 	 */
 	public function test_it_throws_exception_in_strict_mode_when_handler_doesnt_exist()
 	{
+		$transition = new Transition(['event' => 'event', 'from' => 'state2', 'to' => 'state3']);
 		$obj = new ObjectFactory('', true);
-		$obj->createTransitionClassName('state2', 'state3', 'event');
+		$obj->createTransitionClassName($transition);
 	}
 
 	public function test_it_skips_exception_when_not_in_strict_mode_and_handler_doesnt_exist()
 	{
+		$transition = new Transition(['event' => 'event', 'from' => 'state2', 'to' => 'state3']);
 		$obj = new ObjectFactory('', false);
-		$this->assertEquals('\EventChangesState2ToState3', $obj->createTransitionClassName('state2', 'state3', 'event'));
+		$this->assertEquals('\EventChangesState2ToState3', $obj->createTransitionClassName($transition));
 	}
 
 	public function test_it_gives_us_php_class_name()
@@ -50,7 +54,7 @@ class ObjectFactoryTest extends \PHPUnit_Framework_TestCase
 	{
 		$obj = new ObjectFactory('', false);
 		$handler = $obj->createTransitionHandler('\StateMachine\HandlerObjDoesntExist');
-		$this->assertInstanceOf('\StateMachine\DefaultTransition', $handler);
+		$this->assertInstanceOf('\StateMachine\DefaultTransitionHandler', $handler);
 	}
 
 	/**

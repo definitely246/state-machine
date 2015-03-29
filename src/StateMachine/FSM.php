@@ -46,15 +46,6 @@ class FSM
 	protected $stopped;
 
 	/**
-	 * We keep up with a list of
-	 * valid states on this machine
-	 * for sanity checking purposes
-	 *
-	 * @var array
-	 */
-	protected $states;
-
-	/**
 	 * Holds the current state we are on
 	 *
 	 * @var string
@@ -78,18 +69,19 @@ class FSM
 	/**
 	 * Construct the new finite state machine
 	 *
+	 * @param Transitions|array		$transitions
 	 * @param object 				$context
-	 * @param array   				$transitions
 	 * @param string|ObjectFactory 	$factory
 	 */
-	public function __construct(array $transitions, $context = null, $factory = '')
+	public function __construct($transitions, $context = null, $factory = '')
 	{
 		$this->whiny = true;
 		$this->stopped = false;
 		$this->context = $context ?: new Context;
 		$this->factory = is_string($factory) ? new ObjectFactory($factory, true) : $factory;
-		$this->transitions = $this->optimizeTransitions($transitions);
-		$this->setInitialState($transitions);
+		$this->transitions = is_array($transitions) ? new Transitions($transitions) : $transitions;
+		$this->state = $this->transitions->startingState();
+		$this->addTransitionHandlers();
 	}
 
 	/**
@@ -157,15 +149,15 @@ class FSM
 			return $this->whineAboutInvalidTransition($event);
 		}
 
-		$handler = $this->factory->createTransitionHandler($transition['handler']);
+		$handler = $this->factory->createTransitionHandler($transition->handler());
 
 		try
 		{
 			$results = call_user_func_array(array($handler, 'handle'), $this->params($args));
 
-			$this->setState($transition['to']);
+			$this->setState($transition->to());
 
-			$this->stopped = array_key_exists('stop', $transition) && $transition['stop'];
+			$this->stopped = $transition->stop();
 
 			return $results;
 		}
@@ -175,9 +167,9 @@ class FSM
 		}
 		catch (TriggerTransitionEvent $e)
 		{
-			$this->setState($transition['to']);
+			$this->setState($transition->to());
 
-			$this->stopped = array_key_exists('stop', $transition) && $transition['stop'];
+			$this->stopped = $transition->stop();
 
 			return $this->trigger($e->getEvent(), $e->getArgs());
 		}
@@ -215,6 +207,18 @@ class FSM
 	}
 
 	/**
+	 * [checkTransitionHandlers description]
+	 * @return [type] [description]
+	 */
+	protected function addTransitionHandlers()
+	{
+		foreach ($this->transitions as $transition)
+		{
+			$transition->setHandler($this->factory->createTransitionClassName($transition));
+		}
+	}
+
+	/**
 	 * Events can be upper cased or lower cased. They cannot
 	 * contain special characters except for '-', '_', and ' '.
 	 *
@@ -226,7 +230,7 @@ class FSM
 	 */
 	protected function transformEventBack($search)
 	{
-		$events = array_keys($this->transitions);
+		$events = $this->transitions->events();
 
 		$search = strtolower($search);
 
@@ -245,28 +249,12 @@ class FSM
 	 */
 	protected function setState($state)
 	{
-		if (!in_array($state, $this->states)) {
+		if (!in_array($state, $this->transitions->states()))
+		{
 			throw new InvalidState("State {$state} is not a valid state");
 		}
 
 		$this->state = $state;
-	}
-
-	/**
-	 * Sets the initial state based off of the
-	 * transitions array passed in by the user
-	 *
-	 */
-	protected function setInitialState($transitions)
-	{
-		$initialState = $transitions[0]['from'];
-
-		foreach ($transitions as $transition)
-		{
-			if (isset($transition['start'])) $initialState = $transition['from'];
-		}
-
-		$this->state = $initialState;
 	}
 
 	/**
@@ -279,13 +267,11 @@ class FSM
 	{
 		if ($this->stopped) return null;
 
-		$transitions = isset($this->transitions[$event][$this->state])
-			?  $this->transitions[$event][$this->state]
-			: array();
+		$transitions = $this->transitions->findTransitionsForEventAndState($event, $this->state);
 
 		foreach ($transitions as $transition)
 		{
-			$handler = $this->factory->createTransitionHandler($transition['handler']);
+			$handler = $this->factory->createTransitionHandler($transition->handler());
 
 			$result = call_user_func_array(array($handler, 'allow'), $this->params($args));
 
@@ -293,28 +279,6 @@ class FSM
 		}
 
 		return null;
-	}
-
-	/**
-	 * Sees if there is a stopped propery for any
-	 * transitions that match this state and event
-	 *
-	 * @param  [type] $event [description]
-	 * @param  [type] $state [description]
-	 * @return [type]        [description]
-	 */
-	protected function checkForStopped($event, $state)
-	{
-		foreach ($this->transitions[$event] as $transitions)
-		{
-			dd($transition);
-			if ($transition['to'] === $state && array_key_exists('stop', $transition) && $transition['stop'])
-			{
-				return true;
-			}
-		}
-
-		return false;
 	}
 
 	/**
@@ -328,7 +292,6 @@ class FSM
 		$args = is_array($args) ? $args : array($args);
 
 		array_unshift($args, $this->context);
-
 
 		return $args;
 	}
@@ -363,50 +326,5 @@ class FSM
 		}
 
 		return false;
-	}
-
-	/**
-	 * Reorders the transitions into O(1)
-	 * lookup time and also adds handlers
-	 * to all these transitions as well
-	 *
-	 * @return array
-	 */
-	protected function optimizeTransitions($transitions)
-	{
-		$optimized = array();
-
-		$states = array();
-
-		foreach ($transitions as $index => $transition)
-		{
-			if (!isset($transitions[$index]['handler']))
-			{
-				$transitions[$index]['handler'] = $this->factory->createTransitionClassName($transition['from'], $transition['to'], $transition['event']);
-			}
-
-			$states[$transition['to']] = 1;
-			$states[$transition['from']] = 1;
-		}
-
-		foreach ($transitions as $transition)
-		{
-			$event = $transition['event'];
-			$state = $transition['from'];
-
-			if (!isset($optimized[$event])) {
-				$optimized[$event] = array();
-			}
-
-			if (!isset($optimized[$event][$state])) {
-				$optimized[$event][$state] = array();
-			}
-
-			$optimized[$event][$state][] = $transition;
-		}
-
-		$this->states = array_keys($states);
-
-		return $optimized;
 	}
 }

@@ -43,13 +43,13 @@ class ObjectFactory
 	 * @param  string $event
 	 * @return string
 	 */
-	public function createTransitionClassName($from, $to, $event)
+	public function createTransitionClassName(Transition $transition)
 	{
-		$fromName = $this->phpClassName($from);
+		$fromName = $this->phpClassName($transition->from());
 
-		$toName = $this->phpClassName($to);
+		$toName = $this->phpClassName($transition->to());
 
-		$eventName = $this->phpClassName($event);
+		$eventName = $this->phpClassName($transition->event());
 
 		$className = "\\{$eventName}Changes{$fromName}To{$toName}";
 
@@ -98,7 +98,7 @@ class ObjectFactory
 
 		if (!class_exists($className))
 		{
-			return new DefaultTransition;
+			return new DefaultTransitionHandler;
 		}
 
 		return $this->make($className);
