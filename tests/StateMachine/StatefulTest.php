@@ -1,33 +1,51 @@
 <?php namespace StateMachine;
 
+use StateMachine\Stateful;
+
 class StatefulTest extends \PHPUnit_Framework_TestCase
 {
-	public function test_mock_class_uses_stateful()
+	public function test_light_example()
 	{
-		$mock = new StatefulMock;
-		$this->assertEquals('statemock1 event1 called', $mock->event1());
+		$light = new Light;
+		$this->assertEquals('light is off', $light->flipSwitch());
+		$this->assertEquals('light is on', $light->flipSwitch());
 	}
 }
 
-class StatefulMock
+
+class LightOn
+{
+	public function __construct(Light $light)
+	{
+		$this->light = $light;
+	}
+
+	public function flipSwitch()
+	{
+		$this->light->setState(new LightOff($this->light));
+
+		return 'light is off';
+	}
+}
+
+class LightOff
+{
+	public function __construct(Light $light)
+	{
+		$this->light = $light;
+	}
+
+	public function flipSwitch()
+	{
+		$this->light->setState('LightOn');
+
+		return 'light is on';
+	}
+}
+
+class Light
 {
 	use Stateful;
 
-	protected $state = 'StateMachine\StateMock1';
-}
-
-class StateMock1
-{
-	public $var1; protected $var2; private $var3;
-
-	public function event1()
-	{
-		return 'statemock1 event1 called';
-	}
-
-	public function event2(){}
-
-	protected function event3(){}
-
-	private function event4() {}
+	protected $state = 'StateMachine\LightOn';
 }

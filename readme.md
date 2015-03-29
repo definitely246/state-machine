@@ -64,6 +64,72 @@ $fsm->event1();	// 2, prints 'state2 -> state1'
 print $fsm->state() . PHP_EOL; // 'state1'
 ```
 
+### State Pattern - An Alternative to State Machine
+
+Another quick way to get started with states is to use the Stateful trait. This uses a shortcut of the State pattern instead of a State Machine.
+
+```php
+namespace Light\Stuff;
+
+class LightOn
+{
+	public function __construct(Light $light)
+	{
+		print "light is on\n";
+		$this->light = $light;
+	}
+
+	public function flipSwitch()
+	{
+		$this->light->setState('LightOff');
+	}
+
+	public function change($amount)
+	{
+		// you don't change the bulb if it is on...
+	}
+}
+
+class LightOff
+{
+	public function __construct(Light $light)
+	{
+		print "light is off\n";
+		$this->light = $light;
+	}
+
+	public function flipSwitch()
+	{
+		$this->light->setState(new LightOn($this->light));
+	}
+
+	public function change($amount)
+	{
+		print "how many cats does it take to change a lightbulb? [{$amount}]\n";
+	}
+}
+
+class Light
+{
+	use Stateful;
+
+	protected $state = 'Light\Stuff\LightOn';
+}
+
+```
+
+Now that you've defined those classes, you can start to call the flipSwitch event on light. It will use the initial state to determine
+all the available events for this state machine. You should be careful to define the same events across the board. You can implement an interfae to help with that.
+
+```php
+$light = new Light;
+$light->flipSwitch();	// light is off
+$light->change(20);		// how many cats to change? 20
+$light-flipSwitch();	// light is on
+$light->change(20);		// nothing happens...
+```
+
+
 ## Vending Machine Example
 
 Think about a vending machine that allows you buy candy, snacks, soda pop. If you try to purchase a candy bar without paying for it, the machine shouldn't disperse anything right? We can map out the transisitions for a simple vending machine. Because we are not **evil** we'll add in a refund transition too. This will allow people who inserted their money change their minds and get their money back without purchasing anything.
