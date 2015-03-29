@@ -2,6 +2,11 @@
 
 class TransitionsTest extends \PHPUnit_Framework_TestCase
 {
+	public function test_it_can_handle_empty_array()
+	{
+		$transitions = new Transitions([]);
+	}
+
 	public function test_it_gives_us_events()
 	{
 		$transitions = $this->transitions();

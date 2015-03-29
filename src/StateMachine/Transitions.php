@@ -165,7 +165,7 @@ class Transitions extends \ArrayIterator
 
 	protected function findStartingState()
 	{
-		$initialState = $this->transitions[0]->from();
+		$initialState = count($this->transitions) > 0 ? $this->transitions[0]->from() : null;
 
 		foreach ($this->transitions as $transition)
 		{
