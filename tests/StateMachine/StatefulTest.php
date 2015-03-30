@@ -49,6 +49,39 @@ class StatefulTest extends \PHPUnit_Framework_TestCase
 		$light->state = 42; 	// don't allow non-object states
 		$light->flipSwitch();
 	}
+
+	public function test_it_resolves_string_context_path()
+	{
+		$light = new Light;
+		$light->context = "StateMachine\AnotherLightContext";
+		$light->flipSwitch();
+		$this->assertInstanceOf('StateMachine\AnotherLightContext', $light->context);
+	}
+
+	public function test_it_resolves_string_context_under_this_namespace_path()
+	{
+		$light = new Light;
+		$light->context = "AnotherLightContext";
+		$light->flipSwitch();
+		$this->assertInstanceOf('StateMachine\AnotherLightContext', $light->context);
+	}
+
+	public function test_it_throws_exception_if_context_fails_to_resolve()
+	{
+		$this->setExpectedException('StateMachine\Exceptions\ContextNotResolvable');
+		$light = new Light;
+		$light->context = "InvalidLightContext";
+		$light->flipSwitch();
+		$this->assertInstanceOf('StateMachine\AnotherLightContext', $light->context);
+	}
+
+	public function test_it_can_use_this_for_context()
+	{
+		$light = new LightImplementing1Context;
+		$light->context = "this";
+		$light->flipSwitch();
+		$this->assertInstanceOf('StateMachine\LightImplementing1Context', $light->context);
+	}
 }
 
 
@@ -96,9 +129,33 @@ class Light
 	public $state = 'LightOn';
 }
 
+class AnotherLightContext implements Context
+{
+	public $_state;
+
+	public function state()
+	{
+		return $this->_state;
+	}
+
+	public function setState($state)
+	{
+		$this->_state = $state;
+	}
+}
+
 class LightWithoutContext
 {
 	use Stateful;
+
+	public $state = 'LightOn';
+}
+
+class LightImplementing1Context extends AnotherLightContext
+{
+	use Stateful;
+
+	public $context = 'this';
 
 	public $state = 'LightOn';
 }

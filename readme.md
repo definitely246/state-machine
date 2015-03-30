@@ -24,7 +24,47 @@ First let's consider the state pattern. It is a very nice pattern to use. A quic
 ```php
 namespace Light\Stuff;
 
+class LightOn
+{
+	public function __construct(\StateMachine\Context $context)
+	{
+		$this->context = $context;
+	}
 
+	public function flipSwitch()
+	{
+		$this->context->setState(new LightOff($this->context));
+		$this->context->light = 'off';
+		return 'light is off';
+	}
+}
+
+// 
+// handles flipswitch when the light is in off state
+//
+class LightOff
+{
+	public function __construct(\StateMachine\Context $context)
+	{
+		$this->context = $context;
+	}
+
+	public function flipSwitch()
+	{
+		$this->context->setState('LightOn');
+		$this->context->light = 'on';
+		return 'light is on';
+	}
+}
+
+class Light
+{
+	use Stateful;
+
+	public $context;
+
+	public $state = 'LightOn';
+}
 
 
 ```

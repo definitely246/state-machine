@@ -109,15 +109,34 @@ trait Stateful
 	 */
 	protected function statefulContextObject($context)
 	{
+		if (is_null($context))
+		{
+			return new DefaultContext($this->stateful_namespace);
+		}
+
+		if (is_object($context))
+		{
+			return $context;
+		}
+
+		if ($context === 'this')
+		{
+			return $this;
+		}
+
+		if (is_string($context) && $obj = ObjectResolverSingleton::make($context))
+		{
+			return $obj;
+		}
+
 		$fqn = ObjectResolverSingleton::fullyQualifiedNamespace($this);
 
-		$context = $context === 'this' ? $this : $context;
+		if (is_string($context) && $obj = ObjectResolverSingleton::make("{$fqn}\\{$context}"))
+		{
+			return $obj;
+		}
 
-		$context = is_string($context) ? ObjectResolverSingleton::make($context) : $context;
-
-		$context = is_string($context) ? ObjectResolverSingleton::make("{$fqn}\\{$context}") : $context;
-
-		return $context ?: new DefaultContext($this->stateful_namespace);
+		throw new ContextNotResolvable("Could not resolve $context");
 	}
 
 
