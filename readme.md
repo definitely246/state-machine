@@ -87,8 +87,8 @@ $light = new Light;		// no state yet
 $light->status
 $light->flipSwitch();	// 'light is off'
 $light-flipSwitch();	// 'light is on'
+$light->status();	// 'on'
 $light->foobar();		// ERROR! there is no `foobar` method on Light
-$light->
 ```
 
 ### State Machine - A different approach
