@@ -24,6 +24,9 @@ First let's consider the state pattern. It is a very nice pattern to use. A quic
 ```php
 namespace Light\Stuff;
 
+/**
+ * Handle flipSwitch event when light state is on
+ */
 class LightOn
 {
 	public function __construct(\StateMachine\Context $context)
@@ -34,14 +37,14 @@ class LightOn
 	public function flipSwitch()
 	{
 		$this->context->setState(new LightOff($this->context));
-		$this->context->light = 'off';
+		$this->context->set('status', 'off');
 		return 'light is off';
 	}
 }
 
-// 
-// handles flipswitch when the light is in off state
-//
+/**
+ * Handle flipSwitch event when light state is off
+ */
 class LightOff
 {
 	public function __construct(\StateMachine\Context $context)
@@ -52,20 +55,27 @@ class LightOff
 	public function flipSwitch()
 	{
 		$this->context->setState('LightOn');
-		$this->context->light = 'on';
+		$this->context->status = 'on';
 		return 'light is on';
 	}
 }
 
+/**
+ * This holds a context object and uses __call() to call our flipSwitch event
+ */
 class Light
 {
-	use Stateful;
+	use \StateMachine\Stateful;
 
-	public $context;
+	protected $context = 'StateMachine\DefaultContext';
 
-	public $state = 'LightOn';
+	protected $state = 'LightOn';
+
+	public function status()
+	{
+		return $this->context->status;
+	}
 }
-
 
 ```
 
@@ -73,11 +83,12 @@ Now that you've defined those classes, you can start to call the flipSwitch even
 all the available events for this state machine. You should be careful to define the same events across the board. You can implement an interfae to help with that.
 
 ```php
-$light = new Light;
-$light->flipSwitch();	// light is off
-$light->change(20);		// how many cats to change? 20
-$light-flipSwitch();	// light is on
-$light->change(20);		// nothing happens...
+$light = new Light;		// no state yet
+$light->status
+$light->flipSwitch();	// 'light is off'
+$light-flipSwitch();	// 'light is on'
+$light->foobar();		// ERROR! there is no `foobar` method on Light
+$light->
 ```
 
 ### State Machine - A different approach
