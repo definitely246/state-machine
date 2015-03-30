@@ -70,14 +70,14 @@ class FSM
 	 * Construct the new finite state machine
 	 *
 	 * @param Transitions|array		$transitions
-	 * @param object 				$context
+	 * @param Context 				$context
 	 * @param string|ObjectFactory 	$factory
 	 */
 	public function __construct($transitions, $context = null, $factory = '')
 	{
 		$this->whiny = true;
 		$this->stopped = false;
-		$this->context = $context ?: new Context;
+		$this->context = $context ?: new DefaultContext;
 		$this->factory = is_string($factory) ? new ObjectFactory($factory, true) : $factory;
 		$this->transitions = is_array($transitions) ? new Transitions($transitions) : $transitions;
 		$this->state = $this->transitions->startingState();
@@ -155,7 +155,7 @@ class FSM
 		{
 			$results = call_user_func_array(array($handler, 'handle'), $this->params($args));
 
-			$this->setState($transition->to());
+			$this->state = $transition->to();
 
 			$this->stopped = $transition->stop();
 
@@ -167,7 +167,7 @@ class FSM
 		}
 		catch (TriggerTransitionEvent $e)
 		{
-			$this->setState($transition->to());
+			$this->state = $transition->to();
 
 			$this->stopped = $transition->stop();
 
@@ -182,6 +182,7 @@ class FSM
 	 * so we can call our events directly on the
 	 * FSM instead of using the trigger method
 	 *
+	 * @codeCoverageIgnore
 	 * @param  string $event
 	 * @param  array $args
 	 * @return mixed
@@ -241,20 +242,6 @@ class FSM
 		}
 
 		return false;
-	}
-
-	/**
-	 * Sets the state for us
-	 * @param string $state
-	 */
-	protected function setState($state)
-	{
-		if (!in_array($state, $this->transitions->states()))
-		{
-			throw new InvalidState("State {$state} is not a valid state");
-		}
-
-		$this->state = $state;
 	}
 
 	/**

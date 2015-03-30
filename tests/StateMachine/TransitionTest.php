@@ -2,6 +2,12 @@
 
 class TransitionTest extends \PHPUnit_Framework_TestCase
 {
+	public function test_it_throws_exception_when_given_invalid_transitions_array()
+	{
+		$this->setExpectedException('StateMachine\Exceptions\InvalidTransitionProperties');
+		$transition = new Transition([]);
+	}
+
 	public function test_it_gets_event()
 	{
 		$transition = $this->transition();

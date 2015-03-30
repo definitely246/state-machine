@@ -110,8 +110,8 @@ class ObjectFactory
 	 * @param  string $className
 	 * @return object
 	 */
-	public function make($className)
+	public function make($className, $args = array())
 	{
-		return new $className;
+		return ObjectResolverSingleton::make($className, $args);
 	}
 }

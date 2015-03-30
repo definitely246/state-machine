@@ -1,44 +1,19 @@
 <?php namespace StateMachine;
 
-class Context
+interface Context
 {
 	/**
-	 * Stores attributes
+	 * Gets the current state
 	 *
-	 * @var array
-	 */
-	protected $attributes;
-
-	/**
-	 * Context is just a big ol' data storage
-	 *
-	 */
-	public function __construct()
-	{
-		$this->attributes = array();
-	}
-
-	/**
-	 * Magic getter
-	 *
-	 * @param  string $attribute
 	 * @return object
 	 */
-	public function __get($attribute)
-	{
-		return array_key_exists($attribute, $this->attributes)
-			? $this->attributes[$attribute]
-			: null;
-	}
+	public function state();
 
 	/**
-	 * Magic setter
+	 * Sets the current state
 	 *
-	 * @param string $attribute
-	 * @param mixed  $value
+	 * @param   object
+	 * @return  void
 	 */
-	public function __set($attribute, $value)
-	{
-		$this->attributes[$attribute] = $value;
-	}
+	public function setState($state);
 }

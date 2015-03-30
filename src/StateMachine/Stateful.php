@@ -1,8 +1,10 @@
 <?php namespace StateMachine;
 
-use ReflectionClass;
-use ReflectionMethod;
-use StateMachine\Exceptions\InvalidEventTriggered;
+use StateMachine\Exceptions\InvalidState;
+use StateMachine\Exceptions\StateNotResolvable;
+use StateMachine\Exceptions\StateNotFound;
+use StateMachine\Exceptions\ContextNotResolvable;
+use StateMachine\Exceptions\ContextNotFound;
 
 trait Stateful
 {
@@ -27,27 +29,42 @@ trait Stateful
 	/**
 	 * Calls the trigger method for us
 	 *
+	 * @codeCoverageIgnore
 	 * @param  string $method
 	 * @param  array $args
 	 * @return mixed
 	 */
 	public function __call($method, $args)
 	{
-		try { return $this->triggerStateEvent($method, $args); }
+		list ($success, $results) = $this->statefulTrigger($method, $args);
 
-		catch (InvalidEventTriggered $e) { }
+		if (!$success)
+		{
+			trigger_error('Call to undefined method '.__CLASS__.'::'.$method.'()', E_USER_ERROR);
+		}
 
-		trigger_error('Call to undefined method '.__CLASS__.'::'.$method.'()', E_USER_ERROR);
+		return $results;
 	}
 
 	/**
-	 * Sets the state on this
-	 *
-	 * @param object|string $state
+	 * Override this to do moose stuff
+	 * @return boolean
 	 */
-	public function setState($state)
+	protected function statefulStarting()
 	{
-		$this->state = $this->createStateObject($state);
+		// override this to do moose stuff
+		$shouldStart = true;
+
+		return $shouldStart;
+	}
+
+	/**
+	 * Override thsi method to do moose stuff
+	 * @return void
+	 */
+	protected function statefulStarted()
+	{
+		// override this to do moose stuff
 	}
 
 	/**
@@ -55,31 +72,78 @@ trait Stateful
 	 *
 	 * @return void
 	 */
-	protected function bootstrapStateMachine()
+	protected function statefulStartStateMachine()
 	{
 		if ($this->stateful_is_bootstrapped) return;
 
-		if (!$this->state) return;
+		if (!$this->state) {
+			throw new StateNotFound("Could not find valid \$state on this stateful object");
+		}
+
+		if (!property_exists($this, 'context')) {
+			throw new ContextNotFound("Could not find \$context property on this stateful object");
+		}
+
+		if (!$this->statefulStarting()) return;
 
 		$this->stateful_is_bootstrapped = true;
 
-		$class = new ReflectionClass($this->state);
+		$this->stateful_namespace = $this->statefulNamespace($this->state);
 
-		$methods = $class->getMethods(ReflectionMethod::IS_PUBLIC);
+		$this->context = $this->statefulContextObject($this->context);
 
-		$magicMethods = array('__construct', '__destruct', '__call', '__callStatic', '__get', '__set', '__isset', '__unset', '__sleep', '__wakeup', '__toString', '__invoke', '__set_state', '__clone', '__debugInfo');
+		$this->state = $this->statefulCreateStateObject($this->state);
 
-		foreach ($methods as $method)
+		$this->stateful_events = $this->statefulEvents($this->state);
+
+		$this->context->setState($this->state);
+
+		$this->statefulStarted();
+	}
+
+	/**
+	 * A context object is used to initialize
+	 * all states
+	 *
+	 * @return object
+	 */
+	protected function statefulContextObject($context)
+	{
+		$fqn = ObjectResolverSingleton::fullyQualifiedNamespace($this);
+
+		$context = $context === 'this' ? $this : $context;
+
+		$context = is_string($context) ? ObjectResolverSingleton::make($context) : $context;
+
+		$context = is_string($context) ? ObjectResolverSingleton::make("{$fqn}\\{$context}") : $context;
+
+		return $context ?: new DefaultContext($this->stateful_namespace);
+	}
+
+
+	/**
+	 * Gets the namespace for this object or class
+	 *
+	 * @param  string|object $objOrClass
+	 * @return string
+	 */
+	protected function statefulNamespace($classOrObject)
+	{
+		if (is_object($classOrObject) || class_exists($classOrObject))
 		{
-			if (!in_array($method->name, $magicMethods))
-			{
-				$this->stateful_events[] = $method->name;
-			}
+			return ObjectResolverSingleton::fullyQualifiedNamespace($classOrObject);
 		}
 
-		$this->stateful_namespace = $class->getNamespaceName();
+		$thisNamespace = ObjectResolverSingleton::fullyQualifiedNamespace($this);
 
-		$this->state = $this->createStateObject($this->state);
+		$stateNamespace = ObjectResolverSingleton::fullyQualifiedNamespace("{$thisNamespace}\\{$classOrObject}");
+
+		if ($stateNamespace !== false)
+		{
+			return $stateNamespace;
+		}
+
+		throw new InvalidState("Could not find state: [{$classOrObject}]");
 	}
 
 	/**
@@ -88,41 +152,55 @@ trait Stateful
 	 * @param  object|string $state
 	 * @return object
 	 */
-	protected function createStateObject($state)
+	protected function statefulCreateStateObject($state)
 	{
-		if (!is_string($state))
+		if (is_object($state))
 		{
 			return $state;
 		}
 
-		$fqn = $this->stateful_namespace . '\\' . $state;
+		$class = $this->stateful_namespace . '\\' . $state;
 
-		if (class_exists($fqn))
-		{
-			return new $fqn($this);
-		}
+		$newState = ObjectResolverSingleton::make($class, $this->context);
 
-		return new $state($this);
+		$newState = $newState ?: ObjectResolverSingleton::make($state, $this->context);
+
+		if (!$newState) throw new StateNotResolvable("Could not resolve state, attempted: [{$class}, {$state}]");
+
+		return $newState;
 	}
 
 	/**
-	 * Triggers the method on the current state
+	 * Returns a list of events on this state object
+	 *
+	 * @param  Object $state
+	 * @return array
+	 */
+	protected function statefulEvents($state)
+	{
+		$events = ObjectResolverSingleton::methodsWithoutMagic($state);
+
+		return $events ?: array();
+	}
+
+	/**
+	 * Provides a way to trigger events without exception
 	 *
 	 * @param  string $method
-	 * @param  array $args
-	 * @return mixed
+	 * @param  array  $args
+	 * @return array(success, results)
 	 */
-	protected function triggerStateEvent($method, $args)
+	protected function statefulTrigger($method, $args)
 	{
-		$this->bootstrapStateMachine();
+		$this->statefulStartStateMachine();
 
-		if ($this->state && in_array($method, $this->stateful_events))
+		if (in_array($method, $this->stateful_events))
 		{
-			return call_user_func_array(array($this->state, $method), $args);
+			$state = $this->context->state();
+
+			return array(true, call_user_func_array(array($state, $method), $args));
 		}
 
-		$methodName = is_string($method) ? $method : 'object';
-
-		throw new InvalidEventTriggered("State event not valid: [{$methodName}]");
+		return array(false, null);
 	}
 }

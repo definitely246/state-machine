@@ -80,6 +80,21 @@ class FSMTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('out of stock', $fsm->state());
     }
 
+
+    public function test_handlers_cannot_trigger_other_invalid_transitions()
+    {
+        $this->setExpectedException('StateMachine\Exceptions\CannotTransitionForEvent');
+        $exception = new Exceptions\TriggerTransitionEvent('invalidStateName', ['product']);
+        $fsm = $this->buildFSM();
+        $this->ObjectFactory->shouldReceive('createTransitionHandler')->once()->andReturnSelf();
+        $this->ObjectFactory->shouldReceive('allow')->once()->with($this->Context, 'arg1')->andReturn(true);
+        $this->ObjectFactory->shouldReceive('handle')->once()->with($this->Context, 'arg1')->andThrow($exception);
+        $this->ObjectFactory->shouldReceive('allow')->once()->with($this->Context, 'product')->andReturn(true);
+        $this->ObjectFactory->shouldReceive('handle')->once()->with($this->Context, 'product')->andReturn('results from 2nd state');
+        $this->assertEquals('results from 2nd state', $fsm->trigger('insert', 'arg1'));
+        $this->assertEquals('out of stock', $fsm->state());
+    }
+
     public function test_it_magically_calls_can()
     {
         $fsm = $this->buildFSM();
@@ -105,6 +120,13 @@ class FSMTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('handle results', $fsm->insert('arg1'));
     }
 
+    public function test_it_triggers_error_when_magically_calling_unknown_event()
+    {
+        $this->setExpectedException('PHPUnit_Framework_Error');
+        $fsm = $this->buildFSM();
+        $this->assertEquals('handle results', $fsm->foobar('arg1'));
+    }
+
     public function test_it_doesnt_throw_exceptions_when_fsm_is_not_whiny()
     {
         $fsm = $this->buildFSM();
@@ -112,14 +134,43 @@ class FSMTest extends \PHPUnit_Framework_TestCase
         $this->assertFalse($fsm->purchase('product'));
     }
 
-    /**
-     * @expectedException StateMachine\Exceptions\CannotTransitionForEvent
-     */
     public function test_it_throws_exception_when_fsm_is_whiny()
     {
+        $this->setExpectedException('StateMachine\Exceptions\CannotTransitionForEvent');
         $fsm = $this->buildFSM();
         $fsm->whiny = true;
         $fsm->purchase('product');
+    }
+
+    public function test_it_whines_about_stopped_state()
+    {
+        $this->setExpectedException('StateMachine\Exceptions\StateMachineIsStopped');
+        $fsm = $this->buildFSM();
+        $this->ObjectFactory->shouldReceive('createTransitionHandler')->once()->andReturnSelf();
+        $this->ObjectFactory->shouldReceive('allow')->once()->with($this->Context, 125)->andReturnSelf();
+        $this->ObjectFactory->shouldReceive('handle')->once()->with($this->Context, 125)->andReturnSelf();
+        $this->ObjectFactory->shouldReceive('allow')->once()->with($this->Context, 'Thing')->andReturnSelf();
+        $this->ObjectFactory->shouldReceive('handle')->once()->with($this->Context, 'Thing')->andReturnSelf();
+        $fsm->whiny = true;
+        $fsm->insert(125);
+        $fsm->purchase('Thing');
+        $this->assertTrue($fsm->isStopped());
+        $fsm->insert(125);  // throws MachineIsStoppedException
+    }
+
+    public function test_it_does_not_whine_about_stopped_state()
+    {
+        $fsm = $this->buildFSM();
+        $this->ObjectFactory->shouldReceive('createTransitionHandler')->once()->andReturnSelf();
+        $this->ObjectFactory->shouldReceive('allow')->once()->with($this->Context, 125)->andReturnSelf();
+        $this->ObjectFactory->shouldReceive('handle')->once()->with($this->Context, 125)->andReturnSelf();
+        $this->ObjectFactory->shouldReceive('allow')->once()->with($this->Context, 'Thing')->andReturnSelf();
+        $this->ObjectFactory->shouldReceive('handle')->once()->with($this->Context, 'Thing')->andReturnSelf();
+        $fsm->whiny = false;
+        $fsm->insert(125);
+        $fsm->purchase('Thing');
+        $this->assertTrue($fsm->isStopped());
+        $this->assertFalse($fsm->insert(125));
     }
 
     // build the fsm we use to test with

@@ -1,5 +1,7 @@
 <?php namespace StateMachine;
 
+use StateMachine\Exceptions\InvalidTransitionProperties;
+
 class Transition
 {
 	/**
@@ -150,7 +152,7 @@ class Transition
 	{
 		if (!array_key_exists($attribute, $transition))
 		{
-			throw new \InvalidTransition("Transition must have {$attribute}");
+			throw new InvalidTransitionProperties("Transition must have {$attribute}");
 		}
 
 		return $transition[$attribute];

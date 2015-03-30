@@ -4,7 +4,7 @@
 
 I know we just all adore computer science. It is the most coolest field ever, am I right? I sit here reminiscing about those glory days as a young undergrad computer science major. My favorite thing to do was draw finite state machines on a white board. I mean, Alan Turning be damned, finite state machines are awesome, am I right? ^_^
 
-I wrote this state machine as an example in my [Laravel Design Patterns book](http://www.leanpub.com/larasign). The other ones I found for php were confusing to me. So I didn't want to use them. That might not be a great reason to write your own code, but why do you care? You get to use this awesome open source 100% test covered state machine that I wrote. Okay, enough kidding aside. Use this to create a state machine. Here is how you use it.
+I wrote this state machine as an example in my [Laravel Design Patterns book](http://www.leanpub.com/larasign). The other ones I found for php were confusing to me. So I didn't want to use them. That might not be a great reason to write your own code, but why do you care? You get to use this awesome open source state machine [with 100% test coverage](http://htmlpreview.github.io/?https://github.com/definitely246/state-machine/blob/master/tests/coverage/index.html) that I wrote. Okay, enough kidding aside. Use this to create a state machine. Here is how you use it.
 
 ## Install
 
@@ -16,6 +16,35 @@ composer require definitely246/state-machine
 
 ## Quickstart Example
 
+### State Pattern - A Clean Approach & Alternative to State Machine
+
+First let's consider the state pattern. It is a very nice pattern to use. A quick way to get started with states in your objects is by using the `StateMachine\Stateful` trait. This injects State pattern functionality into your class. This approach offers a clean way to add states and a context to your php classes.
+
+
+```php
+namespace Light\Stuff;
+
+
+
+
+```
+
+Now that you've defined those classes, you can start to call the flipSwitch event on light. It will use the initial state to determine
+all the available events for this state machine. You should be careful to define the same events across the board. You can implement an interfae to help with that.
+
+```php
+$light = new Light;
+$light->flipSwitch();	// light is off
+$light->change(20);		// how many cats to change? 20
+$light-flipSwitch();	// light is on
+$light->change(20);		// nothing happens...
+```
+
+### State Machine - A different approach
+
+A state machine can be wrapped around some context object. When transitions are called, a handler class receives the event and is asked to handle it accordingly. Below is a transition handler class, `Event1ChangedState1ToState2`. It is called whenever *event1* is triggered from *state1* and is attempting to change state to *state2*. The second transition class, `Event1ChangdState2ToState1`, handles transitioning *state2* to *state1* when *event1* was called.
+
+
 ```php
 class Event1ChangedState1ToState2
 {
@@ -23,7 +52,7 @@ class Event1ChangedState1ToState2
 	{
 		return true;
 	}
-	
+
 	public function handle($context)
 	{
 		if (!$context->statesChanged) $context->statesChanged = 0;
@@ -38,14 +67,18 @@ class Event1ChangedState2ToState1
    	{
    		return true;
    	}
-   	
+
    	public function handle($context)
    	{
 		print "state2 -> state1\n";
    		return $context->statesChanged++;
    	}
 }
+```
 
+Next we definte transitions for this finite state machine.
+
+```php
 $transitions = [
 	[ 'event' => 'event1', 'from' => 'state1', 'to' => 'state2', 'start' => true],
 	[ 'event' => 'event1', 'from' => 'state2', 'to' => 'state1' ],
@@ -63,72 +96,6 @@ $fsm->event1();	// 2, prints 'state2 -> state1'
 
 print $fsm->state() . PHP_EOL; // 'state1'
 ```
-
-### State Pattern - An Alternative to State Machine
-
-Another quick way to get started with states is to use the Stateful trait. This uses a shortcut of the State pattern instead of a State Machine.
-
-```php
-namespace Light\Stuff;
-
-class LightOn
-{
-	public function __construct(Light $light)
-	{
-		print "light is on\n";
-		$this->light = $light;
-	}
-
-	public function flipSwitch()
-	{
-		$this->light->setState('LightOff');
-	}
-
-	public function change($amount)
-	{
-		// you don't change the bulb if it is on...
-	}
-}
-
-class LightOff
-{
-	public function __construct(Light $light)
-	{
-		print "light is off\n";
-		$this->light = $light;
-	}
-
-	public function flipSwitch()
-	{
-		$this->light->setState(new LightOn($this->light));
-	}
-
-	public function change($amount)
-	{
-		print "how many cats does it take to change a lightbulb? [{$amount}]\n";
-	}
-}
-
-class Light
-{
-	use Stateful;
-
-	protected $state = 'Light\Stuff\LightOn';
-}
-
-```
-
-Now that you've defined those classes, you can start to call the flipSwitch event on light. It will use the initial state to determine
-all the available events for this state machine. You should be careful to define the same events across the board. You can implement an interfae to help with that.
-
-```php
-$light = new Light;
-$light->flipSwitch();	// light is off
-$light->change(20);		// how many cats to change? 20
-$light-flipSwitch();	// light is on
-$light->change(20);		// nothing happens...
-```
-
 
 ## Vending Machine Example
 
@@ -256,7 +223,7 @@ This lets us group our handlers into a single namespace. Now the `StateMachine\E
 
 If you pass `$strictMode = false` to the `ObjectFactory` the anytime transition handler classes are not found, the object factory returns a `StateMachine\DefaultTransitionHandler` instead.
 
-If `ObjectFactory` has `strictMode = true` then you must write a handler for **every** event transition, even if they are just blank. I recommend using `$strictMode = true` because it lets you know quickly which transistion event handler classes you need to create and allows you to tap into the finite state machine's context. 
+If `ObjectFactory` has `strictMode = true` then you must write a handler for **every** event transition, even if they are just blank. I recommend using `$strictMode = true` because it lets you know quickly which transistion event handler classes you need to create and allows you to tap into the finite state machine's context.
 
 ### Whiny mode
 
@@ -341,7 +308,7 @@ $fsm->insert(125);			// throws StateMachine\StateMachineIsStopped exception
 
 ## Licence
 
-This is a MIT licence. That means you can pretty much use it for any of your cool projects. 
+This is a MIT licence. That means you can pretty much use it for any of your cool projects.
 
 
 ## Contributions

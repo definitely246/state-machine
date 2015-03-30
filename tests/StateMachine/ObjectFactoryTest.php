@@ -20,12 +20,18 @@ class ObjectFactoryTest extends \PHPUnit_Framework_TestCase
 		$this->assertEquals('\MyNamespace\EventChangesState1ToState2', $obj->createTransitionClassName($transition));
 	}
 
-	/**
-	 * @expectedException StateMachine\Exceptions\TransitionHandlerNotFound
-	 */
 	public function test_it_throws_exception_in_strict_mode_when_handler_doesnt_exist()
 	{
+		$this->setExpectedException('StateMachine\Exceptions\TransitionHandlerNotFound');
 		$transition = new Transition(['event' => 'event', 'from' => 'state2', 'to' => 'state3']);
+		$obj = new ObjectFactory('', true);
+		$obj->createTransitionClassName($transition);
+	}
+
+	public function test_it_throws_exception_for_invalid_php_class_name()
+	{
+		$this->setExpectedException('StateMachine\Exceptions\InvalidPhpClassName');
+		$transition = new Transition(['event' => 'event', 'from' => 'st#ate2', 'to' => 'state3']);
 		$obj = new ObjectFactory('', true);
 		$obj->createTransitionClassName($transition);
 	}
@@ -57,11 +63,9 @@ class ObjectFactoryTest extends \PHPUnit_Framework_TestCase
 		$this->assertInstanceOf('\StateMachine\DefaultTransitionHandler', $handler);
 	}
 
-	/**
-	 * @expectedException StateMachine\Exceptions\TransitionHandlerNotFound
-	 */
 	public function test_it_throws_exception_when_transition_handler_not_found()
 	{
+		$this->setExpectedException('StateMachine\Exceptions\TransitionHandlerNotFound');
 		$obj = new ObjectFactory('', true);
 		$obj->createTransitionHandler('\StateMachine\HandlerObjDoesntExist');
 	}
