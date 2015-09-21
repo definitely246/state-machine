@@ -31,6 +31,13 @@ class Transitions extends \ArrayIterator
 	protected $states;
 
 	/**
+	 * list of all stop states
+	 *
+	 * @var  array 
+	 */
+	protected $stops;
+
+	/**
 	 * the starting state for these transitions
 	 *
 	 * @var string
@@ -50,6 +57,7 @@ class Transitions extends \ArrayIterator
 		$this->optimized = $this->optimizeTransitions();
 		$this->events = $this->findAllEvents();
 		$this->states = $this->findAllStates();
+		$this->stops = $this->findAllStopStates();
 		$this->startingState = $this->findStartingState();
 
 		parent::__construct($this->transitions);
@@ -162,6 +170,25 @@ class Transitions extends \ArrayIterator
 
 		return array_keys($states);
 	}
+
+	/**
+     * Gets all the stop states from our transitions
+     *
+     * @return array
+     */
+    protected function findAllStopStates()
+    {
+        $states = [];
+
+        foreach ($this->transitions as $transition)
+        {
+        	if (! $transition->stop()) continue;
+        	
+            $states[$transition->to()] = 1;
+        }
+
+        return array_keys($states);
+    }
 
 	protected function findStartingState()
 	{
