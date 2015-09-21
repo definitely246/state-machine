@@ -85,6 +85,16 @@ class Transitions extends \ArrayIterator
 	}
 
 	/**
+	 * Lists all the stop states
+	 *
+	 * @return array
+	 */
+	public function stops()
+	{
+		return $this->stops;
+	}
+
+	/**
 	 * Gets the starting state from our transitions
 	 * array
 	 *
@@ -183,7 +193,7 @@ class Transitions extends \ArrayIterator
         foreach ($this->transitions as $transition)
         {
         	if (! $transition->stop()) continue;
-        	
+
             $states[$transition->to()] = 1;
         }
 
