@@ -173,6 +173,19 @@ class FSMTest extends \PHPUnit_Framework_TestCase
         $this->assertFalse($fsm->insert(125));
     }
 
+    public function test_it_lets_us_set_the_state()
+    {
+        $fsm = $this->buildFSM();
+
+        $this->assertEquals('idle', $fsm->state());
+
+        $fsm->setState('has money');
+        $this->assertEquals('has money', $fsm->state());
+
+        $fsm->setState('out of stock');
+        $this->assertTrue($fsm->isStopped());
+    }
+
     // build the fsm we use to test with
     protected function buildFSM($additional = array())
     {

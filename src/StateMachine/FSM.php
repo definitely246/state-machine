@@ -95,6 +95,17 @@ class FSM
 	}
 
 	/**
+	 * Allow us to set the state independently of 
+	 * the transitions settings (e.g. if we're 
+	 * restoring an object)
+	 */
+	public function setState($state)
+    {
+        $this->state = $state;
+        $this->stopped = in_array($state, $this->transitions->stops());
+    }
+
+	/**
 	 * Gets us the status of this FSM
 	 *
 	 * @return boolean
