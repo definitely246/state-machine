@@ -37,6 +37,17 @@ class TransitionsTest extends \PHPUnit_Framework_TestCase
 		$this->assertCount(1, $transitions->findTransitionsForEventAndState('event2', 'state2'));
 	}
 
+	public function test_it_gives_us_all_the_stop_states()
+	{
+		$transitions = $this->transitions();
+		$this->assertCount(0, $transitions->stops());
+
+		$transitions = $this->transitions([
+			['event' => 'event1', 'from' => 'state1', 'to' => 'state2', 'stop' => true],
+		]);
+		$this->assertCount(1, $transitions->stops());
+	}
+
 	protected function transitions($additional = array())
 	{
 		$merged = array_merge([

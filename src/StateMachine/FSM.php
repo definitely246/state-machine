@@ -96,7 +96,7 @@ class FSM
 
 	/**
 	 * Allow us to set the state independently of 
-	 * the transitions settings (e.g. is we're 
+	 * the transitions settings (e.g. if we're 
 	 * restoring an object)
 	 */
 	public function setState($state)
